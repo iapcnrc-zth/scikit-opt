@@ -77,6 +77,7 @@ def func_transformer(func, n_processes):
         set_run_mode(func, 'vectorization')
 
     mode = getattr(func, 'mode', 'others')
+    print('mode: ', mode)
     valid_mode = ('common', 'multithreading', 'multiprocessing', 'vectorization', 'cached', 'others')
     assert mode in valid_mode, 'valid mode should be in ' + str(valid_mode)
     if mode == 'vectorization':
@@ -117,5 +118,6 @@ def func_transformer(func, n_processes):
     else:  # common
         def func_transformed(X):
             return np.array([func(x) for x in X])
+        print('after transformation: ', func_transformed)
 
         return func_transformed

@@ -82,17 +82,17 @@ class PSO(SkoBase):
     see https://scikit-opt.github.io/scikit-opt/#/en/README?id=_3-psoparticle-swarm-optimization
     """
 
-    def __init__(self, func, n_dim=None, pop=40, max_iter=150, lb=-1e5, ub=1e5, w=0.8, c1=0.5, c2=0.5,
+    def __init__(self, field, n_dim, pop, max_iter, lb, ub, w=0.8, c1=0.5, c2=0.5,
                  constraint_eq=tuple(), constraint_ueq=tuple(), verbose=False
                  , dim=None, n_processes=0):
 
         n_dim = n_dim or dim  # support the earlier version
 
-        self.func = func_transformer(func, n_processes)
+        self.field = field
         self.w = w  # inertia
         self.cp, self.cg = c1, c2  # parameters to control personal best, global best respectively
         self.pop = pop  # number of particles
-        self.n_dim = n_dim  # dimension of particles, which is the number of variables of func
+        self.n_dim = n_dim  # dimension of particles, which is the number of variables of field
         self.max_iter = max_iter  # max iter
         self.verbose = verbose  # print the result of each iter or not
 
@@ -137,10 +137,15 @@ class PSO(SkoBase):
     def update_X(self):
         self.X = self.X + self.V
         self.X = np.clip(self.X, self.lb, self.ub)
+        # print('particle_pos:', self.X)
 
     def cal_y(self):
         # calculate y for every x in X
-        self.Y = self.func(self.X).reshape(-1, 1)
+        print(self.X)
+        measured_vals = []
+        for position in self.X: measured_vals.append([self.field[int(position[0])][int(position[1])]])
+        self.Y = np.array(measured_vals)
+        # print('pos_val: ', self.Y)
         return self.Y
 
     def update_pbest(self):
@@ -209,8 +214,8 @@ class PSO(SkoBase):
 
 class PSO_TSP(SkoBase):
     def __init__(self, func, n_dim, size_pop=50, max_iter=200, w=0.8, c1=0.1, c2=0.1):
-        self.func = func_transformer(func)
-        self.func_raw = func
+        self.field = func_transformer(func)
+        self.field_raw = func
         self.n_dim = n_dim
         self.size_pop = size_pop
         self.max_iter = max_iter
@@ -287,7 +292,7 @@ class PSO_TSP(SkoBase):
 
     def cal_y(self):
         # calculate y for every x in X
-        self.Y = self.func(self.X).reshape(-1, 1)
+        self.Y = self.field(self.X).reshape(-1, 1)
         return self.Y
 
     def update_pbest(self):
