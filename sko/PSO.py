@@ -82,12 +82,11 @@ class PSO(SkoBase):
     see https://scikit-opt.github.io/scikit-opt/#/en/README?id=_3-psoparticle-swarm-optimization
     """
 
-    def __init__(self, field, n_dim, pop, max_iter, lb, ub, w=0.8, c1=0.5, c2=0.5,
+    def __init__(self, field, initial_pos, speed_lim, n_dim, pop, max_iter, lb, ub, w=0.5, c1=0.1, c2=0.1,
                  constraint_eq=tuple(), constraint_ueq=tuple(), verbose=False
                  , dim=None, n_processes=0):
 
         n_dim = n_dim or dim  # support the earlier version
-
         self.field = field
         self.w = w  # inertia
         self.cp, self.cg = c1, c2  # parameters to control personal best, global best respectively
@@ -104,9 +103,10 @@ class PSO(SkoBase):
         self.constraint_ueq = constraint_ueq
         self.is_feasible = np.array([True] * pop)
 
-        self.X = np.random.uniform(low=self.lb, high=self.ub, size=(self.pop, self.n_dim))
-        v_high = self.ub - self.lb
-        self.V = np.random.uniform(low=-v_high, high=v_high, size=(self.pop, self.n_dim))  # speed of particles
+        # self.X = np.random.uniform(low=self.lb, high=self.ub, size=(self.pop, self.n_dim)) # randomised initial agent positions
+        self.X = np.array(initial_pos) # initial positions by inputs
+        speed_limit = np.array(speed_lim) * np.ones(self.n_dim)
+        self.V = np.random.uniform(low=-speed_limit, high=speed_limit, size=(self.pop, self.n_dim))  # speed of particles
         self.Y = self.cal_y()  # y = f(x) for all particles
         self.pbest_x = self.X.copy()  # personal best location of every particle in history
         self.pbest_y = np.array([[np.inf]] * pop)  # best image of every particle in history
@@ -133,19 +133,19 @@ class PSO(SkoBase):
         self.V = self.w * self.V + \
                  self.cp * r1 * (self.pbest_x - self.X) + \
                  self.cg * r2 * (self.gbest_x - self.X)
+        print('updated v: ', self.V)
 
     def update_X(self):
         self.X = self.X + self.V
         self.X = np.clip(self.X, self.lb, self.ub)
-        # print('particle_pos:', self.X)
+        print('particle_pos:', self.X)
 
     def cal_y(self):
         # calculate y for every x in X
-        print(self.X)
         measured_vals = []
         for position in self.X: measured_vals.append([self.field[int(position[0])][int(position[1])]])
         self.Y = np.array(measured_vals)
-        # print('pos_val: ', self.Y)
+        print('pos_val: ', self.Y)
         return self.Y
 
     def update_pbest(self):
@@ -212,128 +212,3 @@ class PSO(SkoBase):
     fit = run
 
 
-class PSO_TSP(SkoBase):
-    def __init__(self, func, n_dim, size_pop=50, max_iter=200, w=0.8, c1=0.1, c2=0.1):
-        self.field = func_transformer(func)
-        self.field_raw = func
-        self.n_dim = n_dim
-        self.size_pop = size_pop
-        self.max_iter = max_iter
-
-        self.w = w
-        self.cp = c1
-        self.cg = c2
-
-        self.X = self.crt_X()
-        self.Y = self.cal_y()
-        self.pbest_x = self.X.copy()
-        self.pbest_y = np.array([[np.inf]] * self.size_pop)
-
-        self.gbest_x = self.pbest_x[0, :]
-        self.gbest_y = np.inf
-        self.gbest_y_hist = []
-        self.update_gbest()
-        self.update_pbest()
-
-        # record verbose values
-        self.record_mode = False
-        self.record_value = {'X': [], 'V': [], 'Y': []}
-        self.verbose = False
-
-    def crt_X(self):
-        tmp = np.random.rand(self.size_pop, self.n_dim)
-        return tmp.argsort(axis=1)
-
-    def pso_add(self, c, x1, x2):
-        x1, x2 = x1.tolist(), x2.tolist()
-        ind1, ind2 = np.random.randint(0, self.n_dim - 1, 2)
-        if ind1 >= ind2:
-            ind1, ind2 = ind2, ind1 + 1
-
-        part1 = x2[ind1:ind2]
-        part2 = [i for i in x1 if i not in part1]  # this is very slow
-
-        return np.array(part1 + part2)
-
-    def update_X(self):
-        for i in range(self.size_pop):
-            x = self.X[i, :]
-            x = self.pso_add(self.cp, x, self.pbest_x[i])
-            self.X[i, :] = x
-
-        self.cal_y()
-        self.update_pbest()
-        self.update_gbest()
-
-        for i in range(self.size_pop):
-            x = self.X[i, :]
-            x = self.pso_add(self.cg, x, self.gbest_x)
-            self.X[i, :] = x
-
-        self.cal_y()
-        self.update_pbest()
-        self.update_gbest()
-
-        for i in range(self.size_pop):
-            x = self.X[i, :]
-            new_x_strategy = np.random.randint(3)
-            if new_x_strategy == 0:
-                x = mutation.swap(x)
-            elif new_x_strategy == 1:
-                x = mutation.reverse(x)
-            elif new_x_strategy == 2:
-                x = mutation.transpose(x)
-
-            self.X[i, :] = x
-
-        self.cal_y()
-        self.update_pbest()
-        self.update_gbest()
-
-    def cal_y(self):
-        # calculate y for every x in X
-        self.Y = self.field(self.X).reshape(-1, 1)
-        return self.Y
-
-    def update_pbest(self):
-        '''
-        personal best
-        :return:
-        '''
-        self.need_update = self.pbest_y > self.Y
-
-        self.pbest_x = np.where(self.need_update, self.X, self.pbest_x)
-        self.pbest_y = np.where(self.need_update, self.Y, self.pbest_y)
-
-    def update_gbest(self):
-        '''
-        global best
-        :return:
-        '''
-        idx_min = self.pbest_y.argmin()
-        if self.gbest_y > self.pbest_y[idx_min]:
-            self.gbest_x = self.X[idx_min, :].copy()
-            self.gbest_y = self.pbest_y[idx_min]
-
-    def recorder(self):
-        if not self.record_mode:
-            return
-        self.record_value['X'].append(self.X)
-        self.record_value['Y'].append(self.Y)
-
-    def run(self, max_iter=None):
-        self.max_iter = max_iter or self.max_iter
-        for iter_num in range(self.max_iter):
-            # self.update_V()
-            self.recorder()
-            self.update_X()
-            # self.cal_y()
-            # self.update_pbest()
-            # self.update_gbest()
-
-            if self.verbose:
-                print('Iter: {}, Best fit: {} at {}'.format(iter_num, self.gbest_y, self.gbest_x))
-
-            self.gbest_y_hist.append(self.gbest_y)
-        self.best_x, self.best_y = self.gbest_x, self.gbest_y
-        return self.best_x, self.best_y
