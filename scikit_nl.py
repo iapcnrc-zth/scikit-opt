@@ -6,7 +6,7 @@ from sample_scalar_field_1 import plume
 sample_plume = plume()
 max_iteration = 60
 agent_num = 12
-speed_lim = .01
+speed_lim = 0.1
 env_dim = 2
 s_lim_vector = []
 for i in range(env_dim): s_lim_vector.append(speed_lim)
@@ -62,6 +62,7 @@ initial_pos = rectangle_point_gen([119, 119], agent_num)
 
 # %% Now Plot the animation
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 from matplotlib.animation import FuncAnimation
 
 pso = PSO(sample_plume, initial_pos, s_lim_vector, env_dim, pop=agent_num, max_iter=max_iteration, lb=[0,0], ub=[120,120])
@@ -81,14 +82,18 @@ X_grid, Y_grid = np.meshgrid(np.linspace(0, 120, 120), np.linspace(0, 120, 120))
 # Z_grid = demo_func((X_grid, Y_grid))
 # ax.contour(X_grid, Y_grid, Z_grid, 30)
 
-ax.contour(X_grid, Y_grid, sample_plume, 100)
+concentration_field = ax.contourf(X_grid, Y_grid, sample_plume, 80, cmap=plt.cm.bone)
+
+cbar = fig.colorbar(concentration_field)
+cbar.ax.set_ylabel('Concentration [ppm]')
 
 ax.set_xlim(0, 120)
 ax.set_ylim(0, 120)
+ax.set_xlabel('Longitudinal distance')
+ax.set_ylabel('Latitudinal distance')
 
 # t = np.linspace(0, 2 * np.pi, 40)
 # ax.plot(0.5 * np.cos(t) + 1, 0.5 * np.sin(t), color='r')
-
 plt.ion()
 p = plt.show()
 
@@ -96,12 +101,12 @@ p = plt.show()
 def update_scatter(frame):
     '''position update function for each animation frame'''
     i, j = frame // 10, frame % 10
-    ax.set_title('iter = ' + str(i))
+    ax.set_title('Time = ' + str(i))
     X_tmp = X_list[i] + V_list[i] * j / 10.0
     plt.setp(line, 'xdata', X_tmp[:, 0], 'ydata', X_tmp[:, 1])
     return line
 
 
-ani = FuncAnimation(fig, update_scatter, blit=True, interval=25, frames=max_iteration * 10)
-ani.save('pso_surround_init.gif', writer='pillow')
+ani = FuncAnimation(fig, update_scatter, blit=True, interval=250, frames=max_iteration * 10)
+ani.save('pso_surround_demo_1.gif', writer='pillow')
 plt.show()

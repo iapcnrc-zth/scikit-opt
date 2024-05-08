@@ -82,7 +82,7 @@ class PSO(SkoBase):
     see https://scikit-opt.github.io/scikit-opt/#/en/README?id=_3-psoparticle-swarm-optimization
     """
 
-    def __init__(self, field, initial_pos, speed_lim, n_dim, pop, max_iter, lb, ub, w=0.5, c1=0.1, c2=0.1,
+    def __init__(self, field, initial_pos, speed_lim, n_dim, pop, max_iter, lb, ub, w=0.7, c1=0.5, c2=0.5,
                  constraint_eq=tuple(), constraint_ueq=tuple(), verbose=False
                  , dim=None, n_processes=0):
 
@@ -133,19 +133,19 @@ class PSO(SkoBase):
         self.V = self.w * self.V + \
                  self.cp * r1 * (self.pbest_x - self.X) + \
                  self.cg * r2 * (self.gbest_x - self.X)
-        print('updated v: ', self.V)
+        # print('updated v: ', self.V)
 
     def update_X(self):
         self.X = self.X + self.V
         self.X = np.clip(self.X, self.lb, self.ub)
-        print('particle_pos:', self.X)
+        # print('particle_pos:', self.X)
 
     def cal_y(self):
         # calculate y for every x in X
         measured_vals = []
         for position in self.X: measured_vals.append([self.field[int(position[0])][int(position[1])]])
         self.Y = np.array(measured_vals)
-        print('pos_val: ', self.Y)
+        # print('pos_val: ', self.Y)
         return self.Y
 
     def update_pbest(self):
